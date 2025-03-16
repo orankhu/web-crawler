@@ -9,14 +9,19 @@ version: 0.4.0
 licence: MIT
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Callable, Any, Dict
-from crawl4ai import AsyncWebCrawler
+from crawl4ai import *
 
 
 class Tools:
     class Valves(BaseModel):
-        pass
+        IGNORE_LINKS: bool = Field(
+            default=True, description="Ignore links in the web page"
+        )
+        IGNORE_IMAGES: bool = Field(
+            default=True, description="Ignore images in the web page"
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -51,7 +56,15 @@ class Tools:
 
         try:
             async with AsyncWebCrawler() as crawler:
-                result = await crawler.arun(url=url)
+                config = CrawlerRunConfig(
+                    markdown_generator=DefaultMarkdownGenerator(
+                        options={
+                            "ignore_links": self.valves.IGNORE_LINKS,
+                            "ignore_images": self.valves.IGNORE_IMAGES,
+                        }
+                    )
+                )
+                result = await crawler.arun(url=url, config=config)
                 response = result.markdown
                 await emit_status(f"Read completed", "done", done=True)
                 return response
